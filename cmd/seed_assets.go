@@ -105,6 +105,8 @@ const seedRegistryTaskYAML = `- name: Checking for Seed Images Archive
       fi
       if [[ "$image_without_digest" == *:* ]]; then
         tag="${image_without_digest##*:}"
+      elif [[ "$image" == *@sha256:* ]]; then
+        tag="sha256-${image##*@sha256:}"
       else
         tag="latest"
       fi
