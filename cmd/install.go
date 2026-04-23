@@ -24,6 +24,9 @@ var redisImage string
 // imageArchivePath is the optional location of the OCI image archive containing required install images
 var imageArchivePath string
 
+// seedImageArchivePath is the optional location of the archive containing seed images to push into Quay after install
+var seedImageArchivePath string
+
 // executableDir is the optional location of the OCI image archive containing unpacked required install images
 var executableDir string
 
@@ -99,6 +102,7 @@ func init() {
 	installCmd.Flags().StringVarP(&quayHostname, "quayHostname", "", "", "The value to set SERVER_HOSTNAME in the Quay config.yaml. This defaults to <targetHostname>:8443")
 
 	installCmd.Flags().StringVarP(&imageArchivePath, "image-archive", "i", "", "An archive containing images")
+	installCmd.Flags().StringVarP(&seedImageArchivePath, "seed-image-archive", "", "", "An archive containing seed images to push into the Quay registry after installation")
 	installCmd.Flags().BoolVarP(&askBecomePass, "askBecomePass", "", false, "Whether or not to ask for sudo password during SSH connection.")
 	installCmd.Flags().StringVarP(&quayRoot, "quayRoot", "r", "~/quay-install", "The folder where quay persistent data are saved. This defaults to ~/quay-install")
 	installCmd.Flags().StringVarP(&quayStorage, "quayStorage", "", "quay-storage", "The folder where quay persistent storage data is saved. This defaults to a Podman named volume 'quay-storage'. Root is required to uninstall.")
@@ -212,6 +216,34 @@ func install() {
 		}
 	}
 
+	// Handle Seed Image Archive
+	var seedImageArchiveMountFlag string
+	if seedImageArchivePath == "" {
+		execPath, err := os.Executable()
+		check(err)
+		defaultSeedArchivePath := path.Join(path.Dir(execPath), "seed-images.tar")
+		if pathExists(defaultSeedArchivePath) {
+			seedImageArchivePath = defaultSeedArchivePath
+		}
+	} else {
+		if !pathExists(seedImageArchivePath) {
+			check(errors.New("Could not find seed-images.tar at " + seedImageArchivePath))
+		}
+	}
+	if seedImageArchivePath != "" {
+		seedImageArchiveMountFlag = fmt.Sprintf(" -v %s:/runner/seed-images.tar", seedImageArchivePath)
+		log.Info("Found seed image archive at " + seedImageArchivePath)
+		log.Infof("Attempting to set SELinux rules on seed image archive")
+		cmd := exec.Command("chcon", "-Rt", "svirt_sandbox_file_t", seedImageArchivePath)
+		if verbose {
+			cmd.Stderr = os.Stderr
+			cmd.Stdout = os.Stdout
+		}
+		if err := cmd.Run(); err != nil {
+			log.Warn("Could not set SELinux rule. If your system does not have SELinux enabled, you may ignore this.")
+		}
+	}
+
 	// Generate password if none provided
 	if initPassword == "" {
 		initPassword, err = password.Generate(32, 10, 0, false, false)
@@ -258,6 +290,7 @@ func install() {
 		`--workdir /runner/project `+
 		`--net host `+
 		imageArchiveMountFlag+ // optional image archive flag
+		seedImageArchiveMountFlag+ // optional seed image archive flag
 		sslCertKeyFlag+ // optional ssl cert/key flag
 		` -v %s:/runner/env/ssh_key `+
 		`-e RUNNER_OMIT_EVENTS=False `+

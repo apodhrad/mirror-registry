@@ -68,6 +68,17 @@ COPY --from=builder /output/ /output/
 RUN /output/install-from-bindep && rm -rf /output/wheels
 COPY ansible-runner/context/app /runner
 
+# Pull and archive seed images (pre-populated into Quay registry after install)
+FROM quay.io/skopeo/stable AS seed-images-builder
+COPY seed-images.txt /seed-images.txt
+RUN mkdir -p /seed-images && \
+    grep -v '^\s*#' /seed-images.txt | grep -v '^\s*$' | while read -r image; do \
+        filename=$(echo "$image" | sed 's|[/:@]|_|g').tar; \
+        skopeo copy --all "docker://${image}" "oci-archive:/seed-images/${filename}"; \
+    done
+COPY seed-images.txt /seed-images/seed-images.txt
+RUN tar -cvf /seed-images.tar -C /seed-images .
+
 # Pull in Quay dependencies
 FROM $QUAY_IMAGE as quay
 FROM $REDIS_IMAGE as redis
@@ -101,11 +112,13 @@ COPY --from=cli /cli/mirror-registry .
 COPY --from=sqlite-cli / /sqlite3
 RUN tar -cvf sqlite3.tar -C /sqlite3 .
 
+COPY --from=seed-images-builder /seed-images.tar seed-images.tar
+
 # Bundle quay, redis and pause into a single archive
 RUN tar -cvf image-archive.tar quay.tar redis.tar pause.tar
 
 # Bundle mirror registry archive
-RUN tar -czvf mirror-registry.tar.gz image-archive.tar execution-environment.tar mirror-registry sqlite3.tar
+RUN tar -czvf mirror-registry.tar.gz image-archive.tar execution-environment.tar mirror-registry sqlite3.tar seed-images.tar
 
 # Extract bundle to final release image
 FROM registry.access.redhat.com/ubi8:latest AS release

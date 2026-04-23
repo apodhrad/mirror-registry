@@ -1,0 +1,8 @@
+# Seed images to pre-populate the Quay registry after installation.
+# One image reference per line. Lines starting with # and blank lines are ignored.
+
+# Image openldapserver is needed to create an Identity Provider (CREATE_IDP)
+quay.io/croberts/openldapserver@sha256:9d4ec0a31b48e165cbef6950c29a0a71a9508cee74fbca2b9df8a9b36f776be1
+
+# Image openldap-ocp is needed to create an Identity Provider (CREATE_IDP) on x86 and arm architecture
+quay.io/rh-ee-jstetina/openldap-ocp@sha256:10233fef19f10b1b7d48f85e71faa064b98f422a984c522a86607ab35e56d21c

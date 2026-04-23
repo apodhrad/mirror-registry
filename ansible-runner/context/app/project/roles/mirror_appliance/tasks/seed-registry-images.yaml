@@ -1,0 +1,44 @@
+- name: Checking for Seed Images Archive
+  local_action: stat path=/runner/seed-images.tar
+  register: seed_archive
+
+- name: Create seed images directory
+  ansible.builtin.file:
+    path: "{{ quay_root }}/seed-images"
+    state: directory
+    recurse: yes
+  when: seed_archive.stat.exists
+
+- name: Copy seed images archive to target
+  copy:
+    src: /runner/seed-images.tar
+    dest: "{{ quay_root }}/seed-images.tar"
+  when: seed_archive.stat.exists
+
+- name: Unpack seed images archive
+  command: "tar -xvf {{ quay_root }}/seed-images.tar -C {{ quay_root }}/seed-images/"
+  when: seed_archive.stat.exists
+
+- name: Push seed images to Quay registry
+  shell: |
+    set -e
+    while IFS= read -r image; do
+      [[ -z "$image" || "$image" =~ ^[[:space:]]*# ]] && continue
+      filename=$(echo "$image" | sed 's|[/:@]|_|g').tar
+      archive="{{ quay_root }}/seed-images/${filename}"
+      image_without_digest="${image%@sha256:*}"
+      name=$(basename "$image_without_digest" | sed 's|:.*||')
+      if [[ "$image_without_digest" == *:* ]]; then
+        tag="${image_without_digest##*:}"
+      else
+        tag="latest"
+      fi
+      target="docker://{{ quay_hostname }}/{{ init_user }}/${name}:${tag}"
+      echo "Pushing ${archive} -> ${target}"
+      skopeo copy \
+        --dest-tls-verify=false \
+        --dest-creds "{{ init_user }}:{{ init_password }}" \
+        "oci-archive:${archive}" \
+        "${target}"
+    done < "{{ quay_root }}/seed-images/seed-images.txt"
+  when: seed_archive.stat.exists

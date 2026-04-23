@@ -44,4 +44,4 @@ build-offline-zip:
 	$(CLIENT) rm mirror-registry-offline-${RELEASE_VERSION}
 
 clean:
-	rm -rf mirror-registry* image-archive.tar
+	rm -rf mirror-registry* image-archive.tar seed-images.tar

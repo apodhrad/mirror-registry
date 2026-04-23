@@ -28,6 +28,9 @@
 - name: Create init user
   include_tasks: create-init-user.yaml
 
+- name: Seed registry images
+  include_tasks: seed-registry-images.yaml
+
 - name: Enable lingering for systemd user processes
   command: "loginctl enable-linger"
   when: ansible_user_uid != 0
