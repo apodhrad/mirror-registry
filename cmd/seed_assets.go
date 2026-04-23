@@ -93,21 +93,19 @@ const seedRegistryTaskYAML = `- name: Checking for Seed Images Archive
 - name: Push seed images to Quay registry
   shell: |
     set -e
-    quay_root=$(eval echo "{{ quay_root }}")
+    quay_root=$(eval echo "${QUAY_ROOT}")
     while IFS= read -r image; do
       [[ -z "$image" || "$image" =~ ^[[:space:]]*# ]] && continue
       filename=$(echo "$image" | sed 's|[/:@]|_|g').tar
       archive="${quay_root}/seed-images/${filename}"
       image_without_digest="${image%@sha256:*}"
-      # Strip registry host (first component before first slash)
       image_path="${image_without_digest#*/}"
-      # Determine namespace and name
       if [[ "$image_path" == */* ]]; then
         namespace="${image_path%%/*}"
         remainder="${image_path#*/}"
         name=$(basename "$remainder" | sed 's|:.*||')
       else
-        namespace="{{ init_user }}"
+        namespace="${INIT_USER}"
         name=$(basename "$image_path" | sed 's|:.*||')
       fi
       if [[ "$image_without_digest" == *:* ]]; then
@@ -115,21 +113,25 @@ const seedRegistryTaskYAML = `- name: Checking for Seed Images Archive
       else
         tag="latest"
       fi
-      # Create Quay organization if it doesn't already exist
-      if [[ "$namespace" != "{{ init_user }}" ]]; then
+      if [[ "$namespace" != "${INIT_USER}" ]]; then
         curl -sk -X POST \
-          -H "Authorization: Basic $(printf '%s:%s' '{{ init_user }}' '{{ init_password }}' | base64 -w 0)" \
+          -H "Authorization: Basic $(printf '%s:%s' "${INIT_USER}" "${INIT_PASSWORD}" | base64 -w 0)" \
           -H "Content-Type: application/json" \
           -d "{\"name\": \"${namespace}\", \"email\": \"${namespace}@quay.local\"}" \
-          "https://{{ quay_hostname }}/api/v1/organization/" || true
+          "https://${QUAY_HOSTNAME}/api/v1/organization/" || true
       fi
-      target="docker://{{ quay_hostname }}/${namespace}/${name}:${tag}"
+      target="docker://${QUAY_HOSTNAME}/${namespace}/${name}:${tag}"
       echo "Pushing ${archive} -> ${target}"
       skopeo copy \
         --dest-tls-verify=false \
-        --dest-creds "{{ init_user }}:{{ init_password }}" \
+        --dest-creds "${INIT_USER}:${INIT_PASSWORD}" \
         "oci-archive:${archive}" \
         "${target}"
     done < "${quay_root}/seed-images/seed-images.txt"
+  environment:
+    QUAY_ROOT: "{{ quay_root }}"
+    INIT_USER: "{{ init_user }}"
+    INIT_PASSWORD: "{{ init_password }}"
+    QUAY_HOSTNAME: "{{ quay_hostname }}"
   when: seed_archive.stat.exists
 `
