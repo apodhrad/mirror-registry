@@ -46,6 +46,9 @@ FROM $EE_BASE_IMAGE as galaxy
 ARG ANSIBLE_GALAXY_CLI_COLLECTION_OPTS=
 USER root
 
+# Prefer IPv4 over IPv6 to avoid broken IPv6 routing on some build hosts
+RUN echo "precedence ::ffff:0:0/96 100" >> /etc/gai.conf
+
 ADD ansible-runner/context/_build /build
 WORKDIR /build
 
