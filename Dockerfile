@@ -74,10 +74,12 @@ COPY ansible-runner/context/app /runner
 # Pull and archive seed images (pre-populated into Quay registry after install)
 FROM quay.io/skopeo/stable AS seed-images-builder
 COPY seed-images.txt /seed-images.txt
-RUN mkdir -p /seed-images && \
+RUN --mount=type=secret,id=authfile,target=/run/secrets/authfile,required=false \
+    mkdir -p /seed-images && \
+    if [ -f /run/secrets/authfile ]; then authfile_opt="--authfile /run/secrets/authfile"; else authfile_opt=""; fi && \
     grep -v '^\s*#' /seed-images.txt | grep -v '^\s*$' | while read -r image; do \
         filename=$(echo "$image" | sed 's|[/:@]|_|g').tar; \
-        skopeo copy --all "docker://${image}" "oci-archive:/seed-images/${filename}"; \
+        skopeo copy ${authfile_opt} --all "docker://${image}" "oci-archive:/seed-images/${filename}"; \
     done
 COPY seed-images.txt /seed-images/seed-images.txt
 RUN tar -cvf /seed-images.tar -C /seed-images .
