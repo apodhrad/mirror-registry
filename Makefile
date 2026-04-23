@@ -27,7 +27,16 @@ build-online-zip:
 	$(CLIENT) cp mirror-registry-online-${RELEASE_VERSION}:/mirror-registry.tar.gz .
 	$(CLIENT) rm mirror-registry-online-${RELEASE_VERSION}
 
-build-offline-zip: 
+build-seed-images:
+	$(CLIENT) build \
+		--target seed-images-builder \
+		-t mirror-registry-seed-images:${RELEASE_VERSION} \
+		--file Dockerfile .
+	$(CLIENT) create --name mirror-registry-seed-images-${RELEASE_VERSION} mirror-registry-seed-images:${RELEASE_VERSION}
+	$(CLIENT) cp mirror-registry-seed-images-${RELEASE_VERSION}:/seed-images.tar .
+	$(CLIENT) rm mirror-registry-seed-images-${RELEASE_VERSION}
+
+build-offline-zip:
 	$(CLIENT) build \
 		-t mirror-registry-offline:${RELEASE_VERSION} \
 		--build-arg RELEASE_VERSION=${RELEASE_VERSION} \
