@@ -6,11 +6,6 @@ const seedPlaybookYAML = `- name: "Seed Mirror Appliance"
   gather_facts: yes
   hosts: all
   tasks:
-    - name: Expand variables
-      include_role:
-        name: mirror_appliance
-        tasks_from: expand-vars
-
     - name: Pre-populate seed image blobs
       include_role:
         name: mirror_appliance
