@@ -81,6 +81,35 @@ func seed() {
 	log.Info("Found seed image archive at " + seedImageArchivePath)
 	setSELinux(seedImageArchivePath)
 
+	// Write embedded playbook and task files to tmpfiles so the seed command
+	// works regardless of what EE version is installed on this host.
+	type tmpAsset struct {
+		content     string
+		destination string
+	}
+	assets := []tmpAsset{
+		{seedPlaybookYAML, "/runner/project/seed_mirror_appliance.yml"},
+		{prePoulateTaskYAML, "/runner/project/roles/mirror_appliance/tasks/pre-populate-seed-blobs.yaml"},
+		{seedRegistryTaskYAML, "/runner/project/roles/mirror_appliance/tasks/seed-registry-images.yaml"},
+	}
+	var assetMountFlags string
+	var tmpFiles []string
+	for _, asset := range assets {
+		f, err := os.CreateTemp("", "mirror-registry-seed-*.yaml")
+		check(err)
+		_, err = f.WriteString(asset.content)
+		check(err)
+		f.Close()
+		tmpFiles = append(tmpFiles, f.Name())
+		setSELinux(f.Name())
+		assetMountFlags += fmt.Sprintf(" -v %s:%s", f.Name(), asset.destination)
+	}
+	defer func() {
+		for _, f := range tmpFiles {
+			os.Remove(f)
+		}
+	}()
+
 	// Set askBecomePass flag if true
 	var askBecomePassFlag string
 	if askBecomePass {
@@ -93,6 +122,7 @@ func seed() {
 		`--workdir /runner/project `+
 		`--net host `+
 		seedImageArchiveMountFlag+
+		assetMountFlags+
 		` -v %s:/runner/env/ssh_key `+
 		`-e RUNNER_OMIT_EVENTS=False `+
 		`-e RUNNER_ONLY_FAILED_EVENTS=False `+
