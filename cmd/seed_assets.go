@@ -120,6 +120,7 @@ const seedRegistryTaskYAML = `- name: Checking for Seed Images Archive
       target="docker://${QUAY_HOSTNAME}/${namespace}/${name}:${tag}"
       echo "Pushing ${archive} -> ${target}"
       skopeo copy \
+        --all \
         --preserve-digests \
         --dest-tls-verify=false \
         --dest-creds "${INIT_USER}:${INIT_PASSWORD}" \
