@@ -15,6 +15,15 @@ import (
 // This variable is set at build time via ldflags
 var sqliteImage string
 
+func ensureExecutionEnvironment() error {
+	cmd := exec.Command("podman", "image", "exists", eeImage)
+	if err := cmd.Run(); err == nil {
+		log.Info("Execution environment already available: " + eeImage)
+		return nil
+	}
+	return loadExecutionEnvironment()
+}
+
 func loadExecutionEnvironment() error {
 
 	// Ensure execution environment is present
