@@ -1,0 +1,60 @@
+- name: Checking for Seed Images Archive
+  local_action: stat path=/runner/seed-images.tar
+  register: seed_archive
+
+- name: Create seed images directory
+  ansible.builtin.file:
+    path: "{{ quay_root }}/seed-images"
+    state: directory
+    recurse: yes
+  when: seed_archive.stat.exists
+
+- name: Copy seed images archive to target
+  copy:
+    src: /runner/seed-images.tar
+    dest: "{{ quay_root }}/seed-images.tar"
+  when: seed_archive.stat.exists
+
+- name: Unpack seed images archive
+  command: "tar -xf {{ quay_root }}/seed-images.tar -C {{ quay_root }}/seed-images/"
+  when: seed_archive.stat.exists
+
+- name: Create Quay Storage named volume for blob pre-population
+  containers.podman.podman_volume:
+    state: present
+    name: "{{ quay_storage }}"
+  when: "seed_archive.stat.exists and not quay_storage.startswith('/')"
+
+- name: Get quay storage filesystem path
+  shell: |
+    if [[ "{{ quay_storage }}" == /* ]]; then
+      echo "{{ quay_storage }}"
+    else
+      podman volume inspect "{{ quay_storage }}" | python3 -c "import sys,json; print(json.load(sys.stdin)[0]['Mountpoint'])"
+    fi
+  register: storage_path
+  when: seed_archive.stat.exists
+
+- name: Pre-populate seed image blobs into Quay storage
+  shell: |
+    set -e
+    quay_root=$(eval echo "{{ quay_root }}")
+    storage="{{ storage_path.stdout | trim }}"
+    blob_base="${storage}/docker/registry/v2/blobs/sha256"
+    mkdir -p "${blob_base}"
+    for archive in "${quay_root}/seed-images/"*.tar; do
+      echo "Pre-populating blobs from $(basename ${archive})"
+      tmpdir=$(mktemp -d -p "${storage}")
+      tar -xf "${archive}" -C "${tmpdir}"
+      for blob in "${tmpdir}/blobs/sha256/"*; do
+        digest=$(basename "${blob}")
+        first2="${digest:0:2}"
+        dest="${blob_base}/${first2}/${digest}"
+        mkdir -p "${dest}"
+        if [[ ! -f "${dest}/data" ]]; then
+          mv "${blob}" "${dest}/data"
+        fi
+      done
+      rm -rf "${tmpdir}"
+    done
+  when: seed_archive.stat.exists

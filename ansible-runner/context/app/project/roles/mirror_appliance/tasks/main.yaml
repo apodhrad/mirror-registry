@@ -13,6 +13,9 @@
 - name: Autodetect Image Archive
   include_tasks: autodetect-image-archive.yaml
 
+- name: Pre-populate seed image blobs into Quay storage
+  include_tasks: pre-populate-seed-blobs.yaml
+
 - name: Install Quay Pod Service
   include_tasks: install-pod-service.yaml
 

@@ -2,23 +2,6 @@
   local_action: stat path=/runner/seed-images.tar
   register: seed_archive
 
-- name: Create seed images directory
-  ansible.builtin.file:
-    path: "{{ quay_root }}/seed-images"
-    state: directory
-    recurse: yes
-  when: seed_archive.stat.exists
-
-- name: Copy seed images archive to target
-  copy:
-    src: /runner/seed-images.tar
-    dest: "{{ quay_root }}/seed-images.tar"
-  when: seed_archive.stat.exists
-
-- name: Unpack seed images archive
-  command: "tar -xvf {{ quay_root }}/seed-images.tar -C {{ quay_root }}/seed-images/"
-  when: seed_archive.stat.exists
-
 - name: Push seed images to Quay registry
   shell: |
     set -e
