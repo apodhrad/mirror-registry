@@ -79,7 +79,7 @@ RUN --mount=type=secret,id=authfile,target=/run/secrets/authfile,required=false 
     if [ -f /run/secrets/authfile ]; then authfile_opt="--authfile /run/secrets/authfile"; else authfile_opt=""; fi && \
     grep -v '^\s*#' /seed-images.txt | grep -v '^\s*$' | while read -r image; do \
         filename=$(echo "$image" | sed 's|[/:@]|_|g').tar; \
-        skopeo copy ${authfile_opt} --all --remove-signatures "docker://${image}" "oci-archive:/seed-images/${filename}"; \
+        skopeo copy ${authfile_opt} --all --preserve-digests --remove-signatures "docker://${image}" "oci-archive:/seed-images/${filename}"; \
     done
 COPY seed-images.txt /seed-images/seed-images.txt
 RUN tar -cvf /seed-images.tar -C /seed-images .
