@@ -99,13 +99,31 @@ const seedRegistryTaskYAML = `- name: Checking for Seed Images Archive
       filename=$(echo "$image" | sed 's|[/:@]|_|g').tar
       archive="${quay_root}/seed-images/${filename}"
       image_without_digest="${image%@sha256:*}"
-      name=$(basename "$image_without_digest" | sed 's|:.*||')
+      # Strip registry host (first component before first slash)
+      image_path="${image_without_digest#*/}"
+      # Determine namespace and name
+      if [[ "$image_path" == */* ]]; then
+        namespace="${image_path%%/*}"
+        remainder="${image_path#*/}"
+        name=$(basename "$remainder" | sed 's|:.*||')
+      else
+        namespace="{{ init_user }}"
+        name=$(basename "$image_path" | sed 's|:.*||')
+      fi
       if [[ "$image_without_digest" == *:* ]]; then
         tag="${image_without_digest##*:}"
       else
         tag="latest"
       fi
-      target="docker://{{ quay_hostname }}/{{ init_user }}/${name}:${tag}"
+      # Create Quay organization if it doesn't already exist
+      if [[ "$namespace" != "{{ init_user }}" ]]; then
+        curl -sk -X POST \
+          -H "Authorization: Basic $(printf '%s:%s' '{{ init_user }}' '{{ init_password }}' | base64 -w 0)" \
+          -H "Content-Type: application/json" \
+          -d "{\"name\": \"${namespace}\", \"email\": \"${namespace}@quay.local\"}" \
+          "https://{{ quay_hostname }}/api/v1/organization/" || true
+      fi
+      target="docker://{{ quay_hostname }}/${namespace}/${name}:${tag}"
       echo "Pushing ${archive} -> ${target}"
       skopeo copy \
         --dest-tls-verify=false \
