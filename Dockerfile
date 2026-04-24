@@ -124,11 +124,14 @@ RUN tar -cvf sqlite3.tar -C /sqlite3 .
 
 COPY --from=seed-images-builder /seed-images.tar seed-images.tar
 
+COPY build-seed-images.sh .
+RUN chmod +x build-seed-images.sh
+
 # Bundle quay, redis and pause into a single archive
 RUN tar -cvf image-archive.tar quay.tar redis.tar pause.tar
 
 # Bundle mirror registry archive
-RUN tar -czvf mirror-registry.tar.gz image-archive.tar execution-environment.tar mirror-registry sqlite3.tar seed-images.tar
+RUN tar -czvf mirror-registry.tar.gz image-archive.tar execution-environment.tar mirror-registry sqlite3.tar seed-images.tar build-seed-images.sh
 
 # Extract bundle to final release image
 FROM registry.access.redhat.com/ubi8:latest AS release
