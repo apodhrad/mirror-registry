@@ -46,7 +46,6 @@ build-seed-images:
 	@[ -s seed-images.txt ] || rm -f seed-images.txt
 
 build-offline-zip:
-	@[ -f seed-images.txt ] || touch seed-images.txt
 	$(CLIENT) build \
 		-t mirror-registry-offline:${RELEASE_VERSION} \
 		--build-arg RELEASE_VERSION=${RELEASE_VERSION} \
@@ -57,12 +56,10 @@ build-offline-zip:
 		--build-arg REDIS_IMAGE=${REDIS_IMAGE} \
 		--build-arg PAUSE_IMAGE=${PAUSE_IMAGE} \
 		--build-arg SQLITE_IMAGE=${SQLITE_IMAGE} \
-		$(AUTHFILE_SECRET) \
 		--file Dockerfile .
 	$(CLIENT) run --name mirror-registry-offline-${RELEASE_VERSION} mirror-registry-offline:${RELEASE_VERSION}
 	$(CLIENT) cp mirror-registry-offline-${RELEASE_VERSION}:/mirror-registry.tar.gz .
 	$(CLIENT) rm mirror-registry-offline-${RELEASE_VERSION}
-	@[ -s seed-images.txt ] || rm -f seed-images.txt
 
 clean:
 	rm -rf mirror-registry* image-archive.tar seed-images.tar
