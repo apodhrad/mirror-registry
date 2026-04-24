@@ -26,6 +26,7 @@ var imageArchivePath string
 
 // seedImageArchivePath is the optional location of the archive containing seed images to push into Quay after install
 var seedImageArchivePath string
+var blobsOnly bool
 
 // executableDir is the optional location of the OCI image archive containing unpacked required install images
 var executableDir string

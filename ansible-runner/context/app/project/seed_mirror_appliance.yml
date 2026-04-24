@@ -11,3 +11,4 @@
       include_role:
         name: mirror_appliance
         tasks_from: seed-registry-images
+      when: seed_registry_images | default(true) | bool

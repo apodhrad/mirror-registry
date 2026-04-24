@@ -15,6 +15,7 @@ const seedPlaybookYAML = `- name: "Seed Mirror Appliance"
       include_role:
         name: mirror_appliance
         tasks_from: seed-registry-images
+      when: seed_registry_images | default(true) | bool
 `
 
 // prePoulateTaskYAML is the pre-populate-seed-blobs.yaml role task file.
