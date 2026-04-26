@@ -20,7 +20,8 @@ const seedPlaybookYAML = `- name: "Seed Mirror Appliance"
 
 // prePoulateTaskYAML is the pre-populate-seed-blobs.yaml role task file.
 const prePoulateTaskYAML = `- name: Checking for Seed Images Archive
-  local_action: stat path=/runner/seed-images.tar
+  ansible.builtin.stat:
+    path: "{{ seed_image_archive_path }}"
   register: seed_archive
 
 - name: Create seed images directory
@@ -30,14 +31,8 @@ const prePoulateTaskYAML = `- name: Checking for Seed Images Archive
     recurse: yes
   when: seed_archive.stat.exists
 
-- name: Copy seed images archive to target
-  copy:
-    src: /runner/seed-images.tar
-    dest: "{{ quay_root }}/seed-images.tar"
-  when: seed_archive.stat.exists
-
 - name: Unpack seed images archive
-  command: "tar -xf {{ quay_root }}/seed-images.tar -C {{ quay_root }}/seed-images/"
+  command: "tar -xf {{ seed_image_archive_path }} -C {{ quay_root }}/seed-images/"
   when: seed_archive.stat.exists
 
 - name: Create Quay Storage named volume for blob pre-population
@@ -83,7 +78,8 @@ const prePoulateTaskYAML = `- name: Checking for Seed Images Archive
 
 // seedRegistryTaskYAML is the seed-registry-images.yaml role task file.
 const seedRegistryTaskYAML = `- name: Checking for Seed Images Archive
-  local_action: stat path=/runner/seed-images.tar
+  ansible.builtin.stat:
+    path: "{{ seed_image_archive_path }}"
   register: seed_archive
 
 - name: Push seed images to Quay registry

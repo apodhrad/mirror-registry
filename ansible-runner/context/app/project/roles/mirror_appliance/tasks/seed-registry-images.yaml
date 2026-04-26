@@ -1,5 +1,6 @@
 - name: Checking for Seed Images Archive
-  local_action: stat path=/runner/seed-images.tar
+  ansible.builtin.stat:
+    path: "{{ seed_image_archive_path }}"
   register: seed_archive
 
 - name: Push seed images to Quay registry

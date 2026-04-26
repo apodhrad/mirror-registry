@@ -138,8 +138,8 @@ func seed() {
 		`--quiet `+
 		`--name ansible_runner_instance `+
 		fmt.Sprintf("%s ", eeImage)+
-		`ansible-playbook -i %s@%s, --private-key /runner/env/ssh_key -e "init_user=%s init_password=%s quay_hostname=%s local_install=%s quay_root=%s quay_storage=%s seed_registry_images=%s" seed_mirror_appliance.yml %s %s`,
-		sshKey, targetUsername, targetHostname, initUser, initPassword, quayHostname, strconv.FormatBool(isLocalInstall()), quayRoot, quayStorage, seedRegistryImages, askBecomePassFlag, additionalArgs)
+		`ansible-playbook -i %s@%s, --private-key /runner/env/ssh_key -e "init_user=%s init_password=%s quay_hostname=%s local_install=%s quay_root=%s quay_storage=%s seed_registry_images=%s seed_image_archive_path=%s" seed_mirror_appliance.yml %s %s`,
+		sshKey, targetUsername, targetHostname, initUser, initPassword, quayHostname, strconv.FormatBool(isLocalInstall()), quayRoot, quayStorage, seedRegistryImages, seedImageArchivePath, askBecomePassFlag, additionalArgs)
 
 	log.Debug("Running command: " + podmanCmd)
 	cmd := exec.Command("bash", "-c", podmanCmd)
