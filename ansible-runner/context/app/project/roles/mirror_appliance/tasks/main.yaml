@@ -25,8 +25,15 @@
 - name: Wait for Quay
   include_tasks: wait-for-quay.yaml
 
+- name: Check if sqlite database already exists
+  stat:
+    path: "{{ sqlite_storage }}/quay_sqlite.db"
+  register: sqlite_db
+  when: "sqlite_storage.startswith('/')"
+
 - name: Create init user
   include_tasks: create-init-user.yaml
+  when: not sqlite_storage.startswith('/') or (sqlite_db is defined and not sqlite_db.stat.exists)
 
 - name: Enable lingering for systemd user processes
   command: "loginctl enable-linger"
