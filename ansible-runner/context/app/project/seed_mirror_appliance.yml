@@ -1,0 +1,14 @@
+- name: "Seed Mirror Appliance"
+  gather_facts: yes
+  hosts: all
+  tasks:
+    - name: Pre-populate seed image blobs
+      include_role:
+        name: mirror_appliance
+        tasks_from: pre-populate-seed-blobs
+
+    - name: Seed registry images
+      include_role:
+        name: mirror_appliance
+        tasks_from: seed-registry-images
+      when: seed_registry_images | default(true) | bool

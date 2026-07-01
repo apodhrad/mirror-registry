@@ -46,6 +46,9 @@ FROM $EE_BASE_IMAGE as galaxy
 ARG ANSIBLE_GALAXY_CLI_COLLECTION_OPTS=
 USER root
 
+# Prefer IPv4 over IPv6 to avoid broken IPv6 routing on some build hosts
+RUN echo "precedence ::ffff:0:0/96 100" >> /etc/gai.conf
+
 ADD ansible-runner/context/_build /build
 WORKDIR /build
 
@@ -67,6 +70,24 @@ COPY --from=galaxy /usr/share/ansible /usr/share/ansible
 COPY --from=builder /output/ /output/
 RUN /output/install-from-bindep && rm -rf /output/wheels
 COPY ansible-runner/context/app /runner
+
+# Pull and archive seed images (pre-populated into Quay registry after install)
+FROM quay.io/skopeo/stable AS seed-images-builder
+COPY seed-images.txt /seed-images.txt
+RUN --mount=type=secret,id=authfile,target=/run/secrets/authfile,required=false \
+    mkdir -p /seed-images && \
+    if [ -f /run/secrets/authfile ]; then authfile_opt="--authfile /run/secrets/authfile"; else authfile_opt=""; fi && \
+    if [ -s /seed-images.txt ]; then \
+        grep -v '^\s*#' /seed-images.txt | grep -v '^\s*$' | while read -r image; do \
+            filename=$(echo "$image" | sed 's|[/:@]|_|g').tar; \
+            skopeo copy ${authfile_opt} --all --remove-signatures "docker://${image}" "oci-archive:/seed-images/${filename}" || \
+                { echo "ERROR: failed to pull ${image}"; exit 1; }; \
+        done; \
+        cp /seed-images.txt /seed-images/seed-images.txt; \
+    else \
+        touch /seed-images/seed-images.txt; \
+    fi
+RUN tar -cvf /seed-images.tar -C /seed-images .
 
 # Pull in Quay dependencies
 FROM $QUAY_IMAGE as quay
@@ -101,11 +122,14 @@ COPY --from=cli /cli/mirror-registry .
 COPY --from=sqlite-cli / /sqlite3
 RUN tar -cvf sqlite3.tar -C /sqlite3 .
 
+COPY build-seed-images.sh .
+RUN chmod +x build-seed-images.sh
+
 # Bundle quay, redis and pause into a single archive
 RUN tar -cvf image-archive.tar quay.tar redis.tar pause.tar
 
 # Bundle mirror registry archive
-RUN tar -czvf mirror-registry.tar.gz image-archive.tar execution-environment.tar mirror-registry sqlite3.tar
+RUN tar -czvf mirror-registry.tar.gz image-archive.tar execution-environment.tar mirror-registry sqlite3.tar build-seed-images.sh
 
 # Extract bundle to final release image
 FROM registry.access.redhat.com/ubi8:latest AS release
